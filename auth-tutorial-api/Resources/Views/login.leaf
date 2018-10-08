@@ -1,0 +1,40 @@
+#set("title") { Login to your Account }
+
+#set("body") {
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <form action="/auth/login" method="POST">
+        <div class="container" id="login">
+            <h1>Login</h1>
+            <p>Please enter your credentials to login.</p>
+            <hr>
+
+            <p class="error">#(errorMessage)</p>
+
+            <input type="hidden" name="_csrf" value=#(csrfToken)>
+            <input type="hidden" name="challenge" value=#(challenge)>
+
+            <label for="email"><b>Email</b></label>
+            <input type="text" placeholder="Your Email" name="email" required>
+
+            <label for="password"><b>Password</b></label>
+            <input type="password" placeholder="Your Password" name="password" id="password_input" required>
+
+            <span><a href="#" id="show_password" class="showPasswordBtn" onclick="
+                    var type = getElementById('password_input').type;
+                    getElementById('password_input').type = type === 'text' ? 'password' : 'text';
+                    getElementById('show_password').innerHTML = type === 'text' ? 'Show password' : 'Hide password'">Show password</a></span>
+
+            <div class="clearfix">
+                <button type="submit" class="mainbutton">Login</button>
+            </div>
+        </div>
+    </form>
+    <form action="/auth/register" method="GET">
+        <div class="clearfix">
+            <input type="hidden" name="login_challenge" value=#(challenge)>
+            <button type="submit" class="accountButton">New? Create account</button>
+        </div>
+    </form>
+}
+
+#embed("base")

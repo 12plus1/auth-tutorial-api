@@ -1,0 +1,39 @@
+#set("title") { Register Account }
+
+#set("body") {
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <form action="/auth/register" method="POST">
+        <div class="container" id="register">
+            <h1>Register</h1>
+            <p>Please fill in this form to create an account.</p>
+            <hr>
+
+            <input type="hidden" name="_csrf" value=#(csrfToken)>
+            <input type="hidden" name="challenge" value=#(challenge)>
+                
+            <label for="email"><b>Email</b></label>
+            <input type="text" placeholder="Enter Email" name="email" required>
+
+            <label for="password"><b>Password</b></label>
+            <input type="password" placeholder="Enter Password" name="password" id="password_input" required>
+                
+            <span><a href="#" id="show_password" class="showPasswordBtn" onclick="
+                var type = getElementById('password_input').type;
+                getElementById('password_input').type = type === 'text' ? 'password' : 'text';
+                getElementById('show_password').innerHTML = type === 'text' ? 'Show password' : 'Hide password'">Show password</a></span>
+
+            <div class="clearfix">
+                <button type="submit" class="mainbutton">Register</button>
+            </div>
+        </div>
+    </form>
+
+    <form action="/auth/login" method="GET">
+        <div class="clearfix">
+            <input type="hidden" name="login_challenge" value=#(challenge)>
+            <button type="submit" class="accountButton">Already have an account?</button>
+        </div>
+    </form>
+}
+
+#embed("base")

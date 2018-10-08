@@ -4,6 +4,19 @@ import FluentSQLite
 import Crypto
 
 final class AuthController {
+    // MARK: Route: GET on /auth/register
+    private func renderRegister(req: Request) throws -> Future<Response> {
+        return try renderAuth(request: req, type: .register)
+    }
+    
+    // MARK: Route: GET on /auth/login
+    private func renderLogin(req: Request) throws -> Future<Response> {
+        return try renderAuth(request: req, type: .login)
+    }
+    
+    // MARK: Route: GET on /auth/consent
+    private func skipConsent(req: Request) throws -> Future<Response> { }
+    
     // MARK: Route: POST on /auth/register
     private func register(req: Request, payload: LoginPayload) throws -> Future<UserResponse> {
         return try authenticate(req: req, payload: payload, type: .register)
@@ -55,11 +68,35 @@ final class AuthController {
             }
         }
     }
+    
+    // MARK: Ory Hydra interaction helper
+    private func renderAuth(request req: Request, type: AuthType, errorMsg: String = "") throws -> Future<Response> {
+        let hydra = try req.make(HydraService.self)
+        let challenge = try hydra.getLoginChallenge(from: req)
+        return try hydra.getLoginRequest(for: req, challenge: challenge).flatMap { hydraLoginRequest in
+            if hydraLoginRequest.skip {
+                return try hydra.acceptLoginRequest(for: req.with(hydraLoginRequest)).map { redirect in
+                    throw Abort.redirect(to: redirect.redirect_to)
+                }
+            } else {
+                return try self.renderAuthForm(request: req, challenge: hydraLoginRequest.challenge, type: type, errorMsg: errorMsg)
+            }
+        }
+    }
+    
+    private func renderAuthForm(request req: Request, challenge: String, type: AuthType, errorMsg: String) throws -> Future<Response> {
+        let viewVariables = ["challenge": challenge, "errorMessage": errorMsg]
+        return try req.view().render(type.rawValue, viewVariables)
+            .flatMap { $0.encode(status: .ok, for: req) }
+    }
 }
 
 extension AuthController: RouteCollection {
     func boot(router: Router) throws {
         let group = router.grouped("auth")
+        group.get("register", use: renderRegister)
+        group.get("login", use: renderLogin)
+        group.get("consent", use: skipConsent)
         group.post(LoginPayload.self, at: "register", use: register)
         group.post(LoginPayload.self, at: "login", use: login)
     }

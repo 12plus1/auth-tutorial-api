@@ -4,7 +4,28 @@ import FluentSQLite
 import Crypto
 
 final class AuthController {
+    // MARK: Route: POST on /auth/register
     private func register(req: Request, payload: LoginPayload) throws -> Future<UserResponse> {
+        return try authenticate(req: req, payload: payload, type: .register)
+    }
+    
+    // MARK: Route: POST on /auth/login
+    private func login(req: Request, payload: LoginPayload) throws -> Future<UserResponse> {
+        return try authenticate(req: req, payload: payload, type: .login)
+    }
+    
+    // MARK: User management helper
+    private func authenticate(req: Request, payload: LoginPayload, type: AuthType) throws -> Future<UserResponse> {
+        try payload.validate()
+        switch type {
+        case .login:
+            return try loginUser(req: req, payload: payload)
+        case .register:
+            return try registerUser(req: req, payload: payload)
+        }
+    }
+    
+    private func registerUser(req: Request, payload: LoginPayload) throws -> Future<UserResponse> {
         return User.query(on: req).filter(\.email == payload.email).first().flatMap { existingUser in
             guard existingUser == nil else {
                 throw Abort(.badRequest, reason: "A user with this email already exists" , identifier: nil)
@@ -21,7 +42,7 @@ final class AuthController {
         return User(id: nil, email: payload.email, password: password)
     }
     
-    private func login(req: Request, payload: LoginPayload) throws -> Future<UserResponse> {
+    private func loginUser(req: Request, payload: LoginPayload) throws -> Future<UserResponse> {
         return User.query(on: req).filter(\.email == payload.email).first().map { existingUser in
             guard let user = existingUser else {
                 throw Abort(.badRequest, reason: "Invalid email or password" , identifier: nil)
@@ -54,4 +75,8 @@ struct LoginPayload: Content, Validatable {
         validations.add(\.password, at: ["password"], !.empty)
         return validations
     }
+}
+
+enum AuthType: String {
+    case login, register
 }

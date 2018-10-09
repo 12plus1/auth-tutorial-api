@@ -29,6 +29,15 @@
         }
       },
       {
+        "package": "CSRF",
+        "repositoryURL": "https://github.com/vapor-community/CSRF.git",
+        "state": {
+          "branch": null,
+          "revision": "473fde772a3b0ad156181d0ae7015ec4c99bb29a",
+          "version": "2.0.0"
+        }
+      },
+      {
         "package": "DatabaseKit",
         "repositoryURL": "https://github.com/vapor/database-kit.git",
         "state": {

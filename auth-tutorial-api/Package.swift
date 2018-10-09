@@ -12,9 +12,12 @@ let package = Package(
         
         // 🍃 An expressive, performant, and extensible templating language built for Swift.
         .package(url: "https://github.com/vapor/leaf.git", from: "3.0.1"),
+        
+        // A package to add protection to Vapor against CSRF attacks.
+        .package(url: "https://github.com/vapor-community/CSRF.git", from: "2.0.0"),
     ],
     targets: [
-        .target(name: "App", dependencies: ["Leaf", "FluentSQLite", "Vapor"]),
+        .target(name: "App", dependencies: ["Leaf", "FluentSQLite", "Vapor", "CSRF"]),
         .target(name: "Run", dependencies: ["App"]),
         .testTarget(name: "AppTests", dependencies: ["App"])
     ]

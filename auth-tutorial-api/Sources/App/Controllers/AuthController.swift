@@ -15,26 +15,47 @@ final class AuthController {
     }
     
     // MARK: Route: GET on /auth/consent
-    private func skipConsent(req: Request) throws -> Future<Response> { }
+    private func skipConsent(req: Request) throws -> Future<Response> {
+        let hydra = try req.make(HydraService.self)
+        return try hydra.getConsentRequest(for: req).flatMap { hydraConsentRequest in
+            try hydra.acceptConsentRequest(for: req.with(hydraConsentRequest)).map { redirect in
+                req.redirect(to: redirect.redirect_to)
+            }
+        }
+    }
     
     // MARK: Route: POST on /auth/register
-    private func register(req: Request, payload: LoginPayload) throws -> Future<UserResponse> {
+    private func register(req: Request, payload: LoginPayload) throws -> Future<Response> {
         return try authenticate(req: req, payload: payload, type: .register)
     }
     
     // MARK: Route: POST on /auth/login
-    private func login(req: Request, payload: LoginPayload) throws -> Future<UserResponse> {
+    private func login(req: Request, payload: LoginPayload) throws -> Future<Response> {
         return try authenticate(req: req, payload: payload, type: .login)
     }
     
     // MARK: User management helper
-    private func authenticate(req: Request, payload: LoginPayload, type: AuthType) throws -> Future<UserResponse> {
+    private func authenticate(req: Request, payload: LoginPayload, type: AuthType) throws -> Future<Response> {
         try payload.validate()
+        let hydra = try req.make(HydraService.self)
+        
+        return try loginOrRegister(req: req, payload: payload, type: type).flatMap { _ in
+            try hydra.acceptLoginRequest(for: req, payload: payload).map { redirect in
+                req.redirect(to: redirect.redirect_to)
+            }
+        }.catchFlatMap { (error: Error) in
+            var msg = error.localizedDescription
+            if let error = error as? AbortError {
+                msg = error.reason
+            }
+            return try self.renderAuth(request: req, type: .login, errorMsg: msg, challenge: payload.challenge)
+        }
+    }
+    
+    private func loginOrRegister(req: Request, payload: LoginPayload, type: AuthType) throws -> Future<UserResponse> {
         switch type {
-        case .login:
-            return try loginUser(req: req, payload: payload)
-        case .register:
-            return try registerUser(req: req, payload: payload)
+        case .login: return try loginUser(req: req, payload: payload)
+        case .register: return try registerUser(req: req, payload: payload)
         }
     }
     
@@ -70,9 +91,9 @@ final class AuthController {
     }
     
     // MARK: Ory Hydra interaction helper
-    private func renderAuth(request req: Request, type: AuthType, errorMsg: String = "") throws -> Future<Response> {
+    private func renderAuth(request req: Request, type: AuthType, errorMsg: String = "", challenge: String? = nil) throws -> Future<Response> {
         let hydra = try req.make(HydraService.self)
-        let challenge = try hydra.getLoginChallenge(from: req)
+        let challenge = try (challenge ?? (try hydra.getLoginChallenge(from: req)))
         return try hydra.getLoginRequest(for: req, challenge: challenge).flatMap { hydraLoginRequest in
             if hydraLoginRequest.skip {
                 return try hydra.acceptLoginRequest(for: req.with(hydraLoginRequest)).map { redirect in
@@ -103,11 +124,13 @@ extension AuthController: RouteCollection {
 }
 
 struct LoginPayload: Content, Validatable {
+    let challenge: String
     let email: String
     let password: String
     
     static func validations() -> Validations<LoginPayload> {
         var validations = Validations(LoginPayload.self)
+        validations.add(\.challenge, at: ["challenge"], !.empty)
         validations.add(\.email, at: ["email"], .email)
         validations.add(\.password, at: ["password"], !.empty)
         return validations

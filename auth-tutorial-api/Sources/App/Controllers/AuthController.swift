@@ -82,7 +82,7 @@ final class AuthController {
     private func loginUser(req: Request, payload: LoginPayload) throws -> Future<UserResponse> {
         return User.query(on: req).filter(\.email == payload.email).first().map { existingUser in
             guard let user = existingUser else {
-                throw Abort(.badRequest, reason: "Invalid email or password" , identifier: nil)
+                throw Abort(.unauthorized, reason: "Invalid email or password" , identifier: nil)
             }
             
             if try BCrypt.verify(payload.password, created: user.password) {

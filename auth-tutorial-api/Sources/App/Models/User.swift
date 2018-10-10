@@ -4,13 +4,13 @@ import FluentSQLite
 
 struct User: Content, SQLiteModel, Migration {
     var id: Int?
-    private(set) var email: String
-    private(set) var password: String
+    let email: String
+    let password: String
 }
 
 struct UserResponse: Content {
     var id: Int?
-    private(set) var email: String
+    let email: String
     
     init(from user: User) {
         self.id = user.id

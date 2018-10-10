@@ -2,8 +2,11 @@ import Vapor
 import Fluent
 import FluentSQLite
 import Crypto
+import CSRF
 
 final class AuthController {
+    private let csrf = CSRF()
+
     // MARK: Route: GET on /auth/register
     private func renderRegister(req: Request) throws -> Future<Response> {
         return try renderAuth(request: req, type: .register)
@@ -106,7 +109,13 @@ final class AuthController {
     }
     
     private func renderAuthForm(request req: Request, challenge: String, type: AuthType, errorMsg: String) throws -> Future<Response> {
-        let viewVariables = ["challenge": challenge, "errorMessage": errorMsg]
+        let session = try req.session()
+        guard let oauthCsrf = req.http.cookies["oauth2_authentication_csrf"]?.string else {
+            throw Abort(.badRequest, reason: "Login request hydra cookie is missing" , identifier: nil)
+        }
+        session["CSRFSecret"] = oauthCsrf
+        let csrfToken = try csrf.createToken(from: req)
+        let viewVariables = ["csrfToken": csrfToken, "challenge": challenge, "errorMessage": errorMsg]
         return try req.view().render(type.rawValue, viewVariables)
             .flatMap { $0.encode(status: .ok, for: req) }
     }

@@ -1,6 +1,7 @@
 import FluentSQLite
 import Vapor
 import Leaf
+import CSRF
 
 /// Called before your application initializes.
 public func configure(_ config: inout Config, _ env: inout Environment, _ services: inout Services) throws {
@@ -15,11 +16,18 @@ public func configure(_ config: inout Config, _ env: inout Environment, _ servic
     
     /// Use Leaf for rendering views
     config.prefer(LeafRenderer.self, for: ViewRenderer.self)
+    
+    /// Register CSRF
+    services.register(CSRF())
 
     /// Register middleware
     var middlewares = MiddlewareConfig() // Create _empty_ middleware config
-    /// middlewares.use(FileMiddleware.self) // Serves files from `Public/` directory
     middlewares.use(ErrorMiddleware.self) // Catches errors and converts to HTTP response
+    
+    middlewares.use(SessionsMiddleware.self)
+    config.prefer(MemoryKeyedCache.self, for: KeyedCache.self)
+    
+    middlewares.use(CSRF.self)
     services.register(middlewares)
 
     // Configure a SQLite database
